@@ -7,20 +7,15 @@ package frc.robot;
 import edu.wpi.first.wpilibj.TimedRobot;
 import edu.wpi.first.wpilibj.smartdashboard.SendableChooser;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
-
 import com.revrobotics.spark.SparkMax;
 import com.revrobotics.spark.SparkLowLevel.MotorType;
 import com.revrobotics.spark.config.SparkBaseConfig.IdleMode;
 import com.revrobotics.spark.config.SparkMaxConfig;
 
+import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.wpilibj.PS4Controller;
 import edu.wpi.first.wpilibj.drive.MecanumDrive;
-
 import com.studica.frc.AHRS;
-import edu.wpi.first.math.geometry.Rotation2d;
-
-
-
 
 /**
  * The methods in this class are called automatically corresponding to each mode, as described in
@@ -33,18 +28,25 @@ public class Robot extends TimedRobot {
   private String m_autoSelected;
   private final SendableChooser<String> m_chooser = new SendableChooser<>();
 
-  private final SparkMax leftmotor1 = new SparkMax(5, MotorType.kBrushless);//front
-  private final SparkMax leftmotor2 = new SparkMax(3, MotorType.kBrushless);
-  private final SparkMax rightmotor1 = new SparkMax(4, MotorType.kBrushless);//front 
-  private final SparkMax rightmotor2 = new SparkMax(2, MotorType.kBrushless);
+  private final SparkMax leftmotor1 = new SparkMax(5, MotorType.kBrushed);//front
+  private final SparkMax leftmotor2 = new SparkMax(3, MotorType.kBrushed);
+  private final SparkMax rightmotor1 = new SparkMax(4, MotorType.kBrushed);//front 
+  private final SparkMax rightmotor2 = new SparkMax(2, MotorType.kBrushed);
   
-  private final SparkMaxConfig leftMotor1 = new SparkMaxConfig();
+  private final SparkMaxConfig leftMotor1 = new SparkMaxConfig();//frente
   private final SparkMaxConfig leftMotor2 = new SparkMaxConfig();
-  private final SparkMaxConfig rightMotor1 = new SparkMaxConfig();
+  private final SparkMaxConfig rightMotor1 = new SparkMaxConfig();//frente
   private final SparkMaxConfig rightMotor2 = new SparkMaxConfig();
+
+
   private final PS4Controller controller = new PS4Controller(0);
 
   private AHRS navx = new AHRS(AHRS.NavXComType.kMXP_SPI);
+
+  MecanumDrive mecanumDrive = new MecanumDrive(leftmotor1, leftmotor2, rightmotor1, rightmotor2);
+
+  boolean fod;        //Habilitar o deshabilitar el control Field Oriented Drive.
+  //private AHRS navx = new AHRS(AHRS.NavXComType.kUSB)
   
 
 
@@ -59,10 +61,18 @@ public class Robot extends TimedRobot {
 
 
 
-    leftMotor1.inverted(false).idleMode(IdleMode.kBrake); 
+    leftMotor1.inverted(false).idleMode(IdleMode.kBrake);// frente
     leftMotor2.inverted(false).idleMode(IdleMode.kBrake);
-    rightMotor1.inverted(true).idleMode(IdleMode.kBrake);
+    rightMotor1.inverted(true).idleMode(IdleMode.kBrake);//frente
     rightMotor2.inverted(true).idleMode(IdleMode.kBrake);
+
+    leftmotor1.configure(leftMotor1, null, null);
+    leftmotor2.configure(leftMotor2, null, null);
+    rightmotor1.configure(rightMotor1, null, null);
+    rightmotor2.configure(rightMotor2, null, null);
+
+
+
 
     
 
@@ -111,27 +121,46 @@ public class Robot extends TimedRobot {
 
   /** This function is called once when teleop is enabled. */
   @Override
-  public void teleopInit() {}
+  public void teleopInit() {
+
+    navx.reset();
+    SmartDashboard.putBoolean("FOD", fod);
+
+  }
 
   /** This function is called periodically during operator control. */
   @Override
   public void teleopPeriodic() {
 
-    navx.getRotation2d();
+    double ySpeed = controller.getLeftY(); // Remember, this is reversed!
+    double xSpeed = -controller.getLeftX(); // Counteract imperfect strafing
+    double zRotation = -controller.getRightX();
 
-    PS4Controller controller = new PS4Controller(0);
-    MecanumDrive mecanumDrive = new MecanumDrive(leftmotor1, leftmotor2, rightmotor1, rightmotor2);
+    fod = SmartDashboard.getBoolean("FOD", fod);
 
-    double ySpeed = -controller.getLeftY(); // Remember, this is reversed!
-    double xSpeed = controller.getLeftX() * 1.1; // Counteract imperfect strafing
-    double zRotation = controller.getRightX();
+     
 
-    double angle = navx.getRotation2d().getDegrees(); // Extract angle in degrees
+    SmartDashboard.putNumber("Navx Angle", navx.getAngle());
 
-    mecanumDrive.driveCartesian(xSpeed, ySpeed, zRotation, navx.getRotation2d());
-    SmartDashboard.putNumber("Navx Angle", angle);
+    if (fod) {
+         
+      //POV
+       
+        mecanumDrive.driveCartesian(ySpeed, xSpeed, zRotation,Rotation2d.fromDegrees(navx.getAngle())); //manejo con navx FOD
+       
+    } else {
 
-  }
+      mecanumDrive.driveCartesian(ySpeed, xSpeed, zRotation); //manejo sin navx NO FOD
+    }
+
+    
+
+    if (controller.getOptionsButton() == true){
+      navx.reset();
+    }
+
+
+  } 
 
   /** This function is called once when the robot is disabled. */
   @Override
