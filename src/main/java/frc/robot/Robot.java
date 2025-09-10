@@ -5,6 +5,7 @@
 package frc.robot;
 
 import edu.wpi.first.wpilibj.TimedRobot;
+import edu.wpi.first.wpilibj.Timer;
 import edu.wpi.first.wpilibj.smartdashboard.SendableChooser;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import com.revrobotics.spark.SparkMax;
@@ -17,6 +18,11 @@ import edu.wpi.first.wpilibj.PS4Controller;
 import edu.wpi.first.wpilibj.drive.MecanumDrive;
 import com.studica.frc.AHRS;
 import edu.wpi.first.wpilibj.DigitalInput;
+//Canrage
+import com.ctre.phoenix6.CANBus;
+import com.ctre.phoenix6.configs.CANrangeConfiguration;
+import com.ctre.phoenix6.hardware.CANrange;
+import com.ctre.phoenix6.signals.UpdateModeValue;
 
 /**
  * The methods in this class are called automatically corresponding to each mode, as described in
@@ -41,16 +47,21 @@ public class Robot extends TimedRobot {
 
 
   private final PS4Controller controller = new PS4Controller(0);
-
   private AHRS navx = new AHRS(AHRS.NavXComType.kMXP_SPI);
-
   MecanumDrive mecanumDrive = new MecanumDrive(leftmotor1, leftmotor2, rightmotor1, rightmotor2);
-
   boolean fod;        //Habilitar o deshabilitar el control Field Oriented Drive.
   //private AHRS navx = new AHRS(AHRS.NavXComType.kUSB)
 
   //Digital Input
   DigitalInput sensoropticoDigitalInput = new DigitalInput(0);
+  
+  //Canrage
+  private static final double PRINT_PERIOD = 0.5; // Update every 500 ms
+
+  private final CANBus kCANBus = new CANBus("rio");
+  private final CANrange canRange = new CANrange(1, kCANBus);
+
+  private double currentTime = Timer.getFPGATimestamp();
   
 
 
@@ -75,6 +86,16 @@ public class Robot extends TimedRobot {
     rightmotor1.configure(rightMotor1, null, null);
     rightmotor2.configure(rightMotor2, null, null);
 
+    CANrangeConfiguration config = new CANrangeConfiguration();
+
+    config.ProximityParams.MinSignalStrengthForValidMeasurement = 2000; // If CANrange has a signal strength of at least 2000, it is a valid measurement.
+    config.ProximityParams.ProximityThreshold = 0.1; // If CANrange detects an object within 0.1 meters, it will trigger the "isDetected" signal.
+
+    config.ToFParams.UpdateMode = UpdateModeValue.ShortRange100Hz; // Make the CANrange update as fast as possible at 100 Hz. This requires short-range mode.
+
+    canRange.getConfigurator().apply(config);
+
+
 
 
 
@@ -92,7 +113,30 @@ public class Robot extends TimedRobot {
    * SmartDashboard integrated updating.
    */
   @Override
-  public void robotPeriodic() {}
+  public void robotPeriodic() {
+
+    if (Timer.getFPGATimestamp() - currentTime > PRINT_PERIOD) {
+      currentTime += PRINT_PERIOD;
+      var distance = canRange.getDistance();
+      var signalStrength = canRange.getSignalStrength();
+      
+      //get is detecter sin refrescar
+      System.out.println("Distance is " + distance.toString() + " with a signal strength of " + signalStrength + " and " + distance.getTimestamp().getLatency() + " seconds of latency");
+      var isDetected = canRange.getIsDetected(false);
+      /* This time wait for the signal to reduce latency */
+      isDetected.waitForUpdate(PRINT_PERIOD); // Wait up to our period
+      /**
+       * This uses the explicit getValue and getUnits functions to print, even though it's not
+       * necessary for the ostream print
+       */
+      System.out.println(
+        "Is Detected is " +
+        isDetected.getValue() + " " +
+        isDetected.getUnits() + " with " +
+        isDetected.getTimestamp().getLatency() + " seconds of latency"
+      );
+  }
+}
 
   /**
    * This autonomous (along with the chooser code above) shows how to select between different
