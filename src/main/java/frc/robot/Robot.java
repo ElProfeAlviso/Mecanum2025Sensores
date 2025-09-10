@@ -4,18 +4,19 @@
 
 package frc.robot;
 
-import edu.wpi.first.wpilibj.TimedRobot;
-import edu.wpi.first.wpilibj.smartdashboard.SendableChooser;
-import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
-import com.revrobotics.spark.SparkMax;
 import com.revrobotics.spark.SparkLowLevel.MotorType;
+import com.revrobotics.spark.SparkMax;
 import com.revrobotics.spark.config.SparkBaseConfig.IdleMode;
 import com.revrobotics.spark.config.SparkMaxConfig;
+import com.studica.frc.AHRS;
 
 import edu.wpi.first.math.geometry.Rotation2d;
+import edu.wpi.first.wpilibj.DigitalInput;
 import edu.wpi.first.wpilibj.PS4Controller;
+import edu.wpi.first.wpilibj.TimedRobot;
 import edu.wpi.first.wpilibj.drive.MecanumDrive;
-import com.studica.frc.AHRS;
+import edu.wpi.first.wpilibj.smartdashboard.SendableChooser;
+import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 
 /**
  * The methods in this class are called automatically corresponding to each mode, as described in
@@ -48,7 +49,7 @@ public class Robot extends TimedRobot {
   boolean fod;        //Habilitar o deshabilitar el control Field Oriented Drive.
   //private AHRS navx = new AHRS(AHRS.NavXComType.kUSB)
   
-
+  DigitalInput SensorDigitalLimitSwitch = new DigitalInput(5); //Limit switch on DIO 0
 
   /**
    * This function is run when the robot is first started up and should be used for any
@@ -172,11 +173,28 @@ public class Robot extends TimedRobot {
 
   /** This function is called once when test mode is enabled. */
   @Override
-  public void testInit() {}
+  public void testInit() {
+    
+  }
 
   /** This function is called periodically during test mode. */
   @Override
-  public void testPeriodic() {}
+  public void testPeriodic() {
+    // Leer el estado del limit switch digital
+    boolean switchPressed = !SensorDigitalLimitSwitch.get(); 
+
+    // Mostrar en SmartDashboard
+    SmartDashboard.putBoolean("Limit Switch", switchPressed);
+
+    // Imprimir en consola
+    if (switchPressed) {
+      System.out.println("Limit switch activado");
+    } 
+    else {
+      System.out.println("Limit switch libre");
+    }
+
+  }
 
   /** This function is called once when the robot is first started up. */
   @Override
