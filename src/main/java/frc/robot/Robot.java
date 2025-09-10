@@ -16,6 +16,7 @@ import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.wpilibj.PS4Controller;
 import edu.wpi.first.wpilibj.drive.MecanumDrive;
 import com.studica.frc.AHRS;
+import edu.wpi.first.wpilibj.DigitalInput;
 
 /**
  * The methods in this class are called automatically corresponding to each mode, as described in
@@ -47,6 +48,9 @@ public class Robot extends TimedRobot {
 
   boolean fod;        //Habilitar o deshabilitar el control Field Oriented Drive.
   //private AHRS navx = new AHRS(AHRS.NavXComType.kUSB)
+
+  //Digital Input
+  DigitalInput sensoropticoDigitalInput = new DigitalInput(0);
   
 
 
@@ -159,7 +163,7 @@ public class Robot extends TimedRobot {
       navx.reset();
     }
 
-
+  
   } 
 
   /** This function is called once when the robot is disabled. */
@@ -176,7 +180,15 @@ public class Robot extends TimedRobot {
 
   /** This function is called periodically during test mode. */
   @Override
-  public void testPeriodic() {}
+  public void testPeriodic() {
+    SmartDashboard.putBoolean("Sensor Optico", sensoropticoDigitalInput.get());
+  }
+  
+
+
+
+
+
 
   /** This function is called once when the robot is first started up. */
   @Override
