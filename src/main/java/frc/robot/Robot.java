@@ -17,6 +17,11 @@ import edu.wpi.first.wpilibj.PS4Controller;
 import edu.wpi.first.wpilibj.drive.MecanumDrive;
 import com.studica.frc.AHRS;
 
+import edu.wpi.first.wpilibj.DigitalInput;
+import edu.wpi.first.wpilibj.AnalogInput;
+
+import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
+
 /**
  * The methods in this class are called automatically corresponding to each mode, as described in
  * the TimedRobot documentation. If you change the name of this class or the package after creating
@@ -48,6 +53,7 @@ public class Robot extends TimedRobot {
   boolean fod;        //Habilitar o deshabilitar el control Field Oriented Drive.
   //private AHRS navx = new AHRS(AHRS.NavXComType.kUSB)
   
+  DigitalInput sensorDigital2 = new DigitalInput(2); //Sensor digital en el puerto DIO 2
 
 
   /**
@@ -70,12 +76,6 @@ public class Robot extends TimedRobot {
     leftmotor2.configure(leftMotor2, null, null);
     rightmotor1.configure(rightMotor1, null, null);
     rightmotor2.configure(rightMotor2, null, null);
-
-
-
-
-    
-
 
 
   }
@@ -176,7 +176,12 @@ public class Robot extends TimedRobot {
 
   /** This function is called periodically during test mode. */
   @Override
-  public void testPeriodic() {}
+  public void testPeriodic() {
+
+  SmartDashboard.putBoolean("Sensor Digital DIO 2", sensorDigital2.get());
+
+
+  }
 
   /** This function is called once when the robot is first started up. */
   @Override
