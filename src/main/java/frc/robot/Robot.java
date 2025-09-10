@@ -49,7 +49,12 @@ public class Robot extends TimedRobot {
   boolean fod;        //Habilitar o deshabilitar el control Field Oriented Drive.
   //private AHRS navx = new AHRS(AHRS.NavXComType.kUSB)
   
-  DigitalInput SensorDigitalLimitSwitch = new DigitalInput(5); //Limit switch on DIO 0
+
+  // Digital Input - Limit Switch
+  DigitalInput SensorDigitalLimitSwitch = new DigitalInput(5); 
+
+  // Digital Input - óptico
+  DigitalInput SensorDigitalOptico = new DigitalInput(4); 
 
   /**
    * This function is run when the robot is first started up and should be used for any
@@ -183,8 +188,12 @@ public class Robot extends TimedRobot {
     // Leer el estado del limit switch digital
     boolean switchPressed = !SensorDigitalLimitSwitch.get(); 
 
+    // Leer el estado del sensor óptico
+    boolean sensorActive = !SensorDigitalOptico.get();
+
     // Mostrar en SmartDashboard
     SmartDashboard.putBoolean("Limit Switch", switchPressed);
+    SmartDashboard.putBoolean("Sensor Óptico", sensorActive);
 
     // Imprimir en consola
     if (switchPressed) {
@@ -192,6 +201,12 @@ public class Robot extends TimedRobot {
     } 
     else {
       System.out.println("Limit switch libre");
+    }
+    if (sensorActive) {
+      System.out.println("Sensor óptico activado");
+    } 
+    else {
+      System.out.println("Sensor óptico libre");
     }
 
   }
