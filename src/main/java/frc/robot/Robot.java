@@ -55,9 +55,8 @@ public class Robot extends TimedRobot {
   DigitalInput sensoropticoDigitalInput = new DigitalInput(0);
   
   //Canrage
-  private static final double PRINT_PERIOD = 0.5; // Update every 500 ms
   private final CANBus kCANBus = new CANBus("rio");
-  private final CANrange canRange = new CANrange(1, kCANBus);
+  private final CANrange canRange = new CANrange(6, kCANBus);
   private double currentTime = Timer.getFPGATimestamp();
   
 
@@ -103,16 +102,16 @@ public class Robot extends TimedRobot {
   @Override
   public void robotPeriodic() {
 
-    if (Timer.getFPGATimestamp() - currentTime > PRINT_PERIOD) {
-      currentTime += PRINT_PERIOD;
+    
+     
       var distance = canRange.getDistance();
-      var signalStrength = canRange.getSignalStrength();
+      //var signalStrength = canRange.getSignalStrength();
       
       //get is detecter sin refrescar
       //System.out.println("Distance is " + distance.toString() + " with a signal strength of " + signalStrength + " and " + distance.getTimestamp().getLatency() + " seconds of latency");
-      var isDetected = canRange.getIsDetected(false);
+      var isDetected = canRange.getIsDetected();
       /* This time wait for the signal to reduce latency */
-      isDetected.waitForUpdate(PRINT_PERIOD); // Wait up to our period
+      //isDetected.waitForUpdate(PRINT_PERIOD); // Wait up to our period
       /**
        * This uses the explicit getValue and getUnits functions to print, even though it's not
        * necessary for the ostream print
@@ -124,8 +123,8 @@ public class Robot extends TimedRobot {
         isDetected.getTimestamp().getLatency() + " seconds of latency"
       );*/
 
-      SmartDashboard.putNumber("Distance", distance.getTimestamp().getLatency());
-      SmartDashboard.putBoolean("Is Detected", isDetected.getValue());
+      SmartDashboard.putNumber("Distance", distance);
+      SmartDashboard.putBoolean("Is Detected", isDetected);
   }
 }
 
