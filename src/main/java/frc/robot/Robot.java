@@ -55,10 +55,8 @@ public class Robot extends TimedRobot {
   DigitalInput sensoropticoDigitalInput = new DigitalInput(0);
   
   //Canrage
-  private static final double PRINT_PERIOD = 0.5; // Update every 500 ms
   private final CANBus kCANBus = new CANBus("rio");
-  private final CANrange canRange = new CANrange(1, kCANBus);
-  private double currentTime = Timer.getFPGATimestamp();
+  private final CANrange canRange = new CANrange(6, kCANBus);
   
 
 
@@ -82,14 +80,14 @@ public class Robot extends TimedRobot {
     rightmotor1.configure(rightMotor1, null, null);
     rightmotor2.configure(rightMotor2, null, null);
 
-    CANrangeConfiguration config = new CANrangeConfiguration();
+    CANrangeConfiguration configCanRange = new CANrangeConfiguration();
 
-    config.ProximityParams.MinSignalStrengthForValidMeasurement = 2000; // If CANrange has a signal strength of at least 2000, it is a valid measurement.
-    config.ProximityParams.ProximityThreshold = 0.1; // If CANrange detects an object within 0.1 meters, it will trigger the "isDetected"
+    configCanRange.ProximityParams.MinSignalStrengthForValidMeasurement = 2000; // If CANrange has a signal strength of at least 2000, it is a valid measurement.
+    configCanRange.ProximityParams.ProximityThreshold = 0.1; // If CANrange detects an object within 0.1 meters, it will trigger the "isDetected"
 
-    config.ToFParams.UpdateMode = UpdateModeValue.ShortRange100Hz; // Make the CANrange update as fast as possible at 100 Hz. This requires short-range mode.
+    configCanRange.ToFParams.UpdateMode = UpdateModeValue.ShortRange100Hz; // Make the CANrange update as fast as possible at 100 Hz. This requires short-range mode.
 
-    canRange.getConfigurator().apply(config);
+    canRange.getConfigurator().apply(configCanRange);
 
   }
 
@@ -103,30 +101,17 @@ public class Robot extends TimedRobot {
   @Override
   public void robotPeriodic() {
 
-    if (Timer.getFPGATimestamp() - currentTime > PRINT_PERIOD) {
-      currentTime += PRINT_PERIOD;
-      var distance = canRange.getDistance();
-      var signalStrength = canRange.getSignalStrength();
-      
-      //get is detecter sin refrescar
-      //System.out.println("Distance is " + distance.toString() + " with a signal strength of " + signalStrength + " and " + distance.getTimestamp().getLatency() + " seconds of latency");
-      var isDetected = canRange.getIsDetected(false);
-      /* This time wait for the signal to reduce latency */
-      isDetected.waitForUpdate(PRINT_PERIOD); // Wait up to our period
-      /**
-       * This uses the explicit getValue and getUnits functions to print, even though it's not
-       * necessary for the ostream print
-       */
-      /*System.out.println(
-        "Is Detected is " +
-        isDetected.getValue() + " " +
-        isDetected.getUnits() + " with " +
-        isDetected.getTimestamp().getLatency() + " seconds of latency"
-      );*/
+    var distanceCanRange = canRange.getDistance();
+    var isDetectedCanRange = canRange.getIsDetected(false);
 
-      SmartDashboard.putNumber("Distance", distance.getTimestamp().getLatency());
-      SmartDashboard.putBoolean("Is Detected", isDetected.getValue());
-  }
+    String distanceCanRanger = distanceCanRange.toString();
+    Boolean isDetectedCanRanger = isDetectedCanRange.getValue();
+
+    SmartDashboard.putString("CANRange Distance", distanceCanRanger);
+    SmartDashboard.putBoolean("CANRange isDetected", isDetectedCanRanger);
+
+
+
 }
 
   /**
