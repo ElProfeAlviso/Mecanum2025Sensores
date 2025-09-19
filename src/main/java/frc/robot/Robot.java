@@ -4,6 +4,8 @@ import edu.wpi.first.wpilibj.TimedRobot;
 import edu.wpi.first.wpilibj.Timer;
 import edu.wpi.first.wpilibj.smartdashboard.SendableChooser;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
+import edu.wpi.first.wpilibj.PowerDistribution;
+import edu.wpi.first.wpilibj.PowerDistribution.ModuleType;
 
 import com.revrobotics.spark.SparkBase;
 import com.revrobotics.spark.SparkMax;
@@ -52,6 +54,8 @@ public class Robot extends TimedRobot {
   private boolean fod; // Habilitar o deshabilitar el control Field Oriented Drive.
 
   Timer cronos = new Timer(); //Nuevo timer para cronometrar tiempo de autonomo.;
+
+  PowerDistribution PowerDistribution = new PowerDistribution(1, ModuleType.kCTRE);
   
   /**
    * This function is run when the robot is first started up and should be used
@@ -65,10 +69,10 @@ public class Robot extends TimedRobot {
     SmartDashboard.putData("Auto choserr", m_chooser);
 
     
-    frontLeftMotorConfig.inverted(false).idleMode(IdleMode.kBrake);
-    rearLeftMotorConfig.inverted(false).idleMode(IdleMode.kBrake);
-    frontRightMotorConfig.inverted(true).idleMode(IdleMode.kBrake);
-    rearRightMotorConfig.inverted(true).idleMode(IdleMode.kBrake);
+    frontLeftMotorConfig.inverted(true).idleMode(IdleMode.kBrake);
+    rearLeftMotorConfig.inverted(true).idleMode(IdleMode.kBrake);
+    frontRightMotorConfig.inverted(false).idleMode(IdleMode.kBrake);
+    rearRightMotorConfig.inverted(false).idleMode(IdleMode.kBrake);
 
     frontLeftMotor.configure(frontLeftMotorConfig,SparkBase.ResetMode.kResetSafeParameters ,SparkBase.PersistMode.kPersistParameters);
     rearLeftMotor.configure(rearLeftMotorConfig, SparkBase.ResetMode.kResetSafeParameters ,SparkBase.PersistMode.kPersistParameters);
@@ -149,8 +153,9 @@ public class Robot extends TimedRobot {
   /** This function is called once when teleop is enabled. */
   @Override
   public void teleopInit() {
-
+    
     navx.reset();
+    fod = true;
     SmartDashboard.putBoolean("FOD", fod);
 
   }
@@ -159,14 +164,15 @@ public class Robot extends TimedRobot {
   @Override
   public void teleopPeriodic() {
 
-    double ySpeed = driverController.getLeftY(); // Remember, this is reversed!
-    double xSpeed = -driverController.getLeftX(); // Counteract imperfect strafing
-    double zRotation = -driverController.getRightX();
+    double ySpeed = -driverController.getLeftY(); // Remember, this is reversed!
+    double xSpeed = driverController.getLeftX(); // Counteract imperfect strafing
+    double zRotation = driverController.getRightX();
 
     fod = SmartDashboard.getBoolean("FOD", fod);
 
     SmartDashboard.putData("Navx Angle", navx);
     SmartDashboard.putData("Chasis", mecanumDrive);
+    SmartDashboard.putData("PDP", PowerDistribution);
     
 
     if (fod) {
@@ -175,12 +181,14 @@ public class Robot extends TimedRobot {
 
       // POV
      
-      mecanumDrive.driveCartesian(ySpeed, xSpeed, zRotation, navXAngle); // manejo con
+      mecanumDrive.driveCartesian(ySpeed, xSpeed, zRotation, navXAngle);
+      System.out.println("Modo FOD Activado"); // manejo con
                                                                                                        // navx FOD
 
     } else {
 
-      mecanumDrive.driveCartesian(ySpeed, xSpeed, zRotation); // manejo sin navx NO FOD
+      mecanumDrive.driveCartesian(ySpeed, xSpeed, zRotation);
+      System.out.println("Modo FOD Desactivado");  // manejo sin navx NO FOD
     }
 
     if (driverController.getOptionsButton() == true) {
