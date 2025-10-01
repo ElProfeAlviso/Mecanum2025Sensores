@@ -1,0 +1,38 @@
+{
+  "NetworkTables Settings": {
+    "mode": "Client (NT4)",
+    "serverTeam": "5959"
+  },
+  "Persistent Values": {
+    "open": false
+  },
+  "Retained Values": {
+    "open": false
+  },
+  "transitory": {
+    "FMSInfo": {
+      "open": true
+    },
+    "LiveWindow": {
+      "open": true
+    },
+    "Shuffleboard": {
+      ".metadata": {
+        "open": true
+      },
+      ".recording": {
+        "open": true
+      },
+      "open": true
+    },
+    "SmartDashboard": {
+      "Navx Angle": {
+        "open": true
+      },
+      "PDP": {
+        "open": true
+      },
+      "open": true
+    }
+  }
+}

@@ -2,10 +2,13 @@ package frc.robot;
 
 import edu.wpi.first.wpilibj.TimedRobot;
 import edu.wpi.first.wpilibj.Timer;
+import edu.wpi.first.wpilibj.smartdashboard.Field2d;
 import edu.wpi.first.wpilibj.smartdashboard.SendableChooser;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj.PowerDistribution;
 import edu.wpi.first.wpilibj.PowerDistribution.ModuleType;
+
+import java.util.List;
 
 import com.revrobotics.spark.SparkBase;
 import com.revrobotics.spark.SparkMax;
@@ -14,11 +17,19 @@ import com.revrobotics.spark.SparkLowLevel.MotorType;
 import com.revrobotics.spark.config.SparkBaseConfig.IdleMode;
 import com.revrobotics.spark.config.SparkMaxConfig;
 
+import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Rotation2d;
+import edu.wpi.first.math.geometry.Translation2d;
+import edu.wpi.first.math.trajectory.Trajectory;
+import edu.wpi.first.math.trajectory.TrajectoryConfig;
+import edu.wpi.first.math.trajectory.TrajectoryGenerator;
+import edu.wpi.first.math.util.Units;
 import edu.wpi.first.wpilibj.PS4Controller;
 import edu.wpi.first.wpilibj.drive.MecanumDrive;
 import com.studica.frc.AHRS;
 
+import edu.wpi.first.wpilibj.Alert;
+import edu.wpi.first.wpilibj.DriverStation;
 
 /**
  * The methods in this class are called automatically corresponding to each
@@ -49,14 +60,21 @@ public class Robot extends TimedRobot {
   // private AHRS navx = new AHRS(AHRS.NavXComType.kUSB)
   private final AHRS navx = new AHRS(AHRS.NavXComType.kMXP_SPI);
 
-  private final MecanumDrive mecanumDrive = new MecanumDrive(frontLeftMotor, rearLeftMotor, frontRightMotor, rearRightMotor);
+  private final MecanumDrive mecanumDrive = new MecanumDrive(frontLeftMotor, rearLeftMotor, frontRightMotor,
+      rearRightMotor);
 
   private boolean fod; // Habilitar o deshabilitar el control Field Oriented Drive.
 
-  Timer cronos = new Timer(); //Nuevo timer para cronometrar tiempo de autonomo.;
+  Timer cronos = new Timer(); // Nuevo timer para cronometrar tiempo de autonomo.;
 
   PowerDistribution PowerDistribution = new PowerDistribution(1, ModuleType.kCTRE);
-  
+
+  private final Field2d m_field = new Field2d();
+
+  Alert alert = new Alert("Modo FOD ACTIVADO", Alert.AlertType.kInfo);  
+  Alert alert2 = new Alert("PARO DE EMERGENCIA ACTIVADO", Alert.AlertType.kError);
+
+
   /**
    * This function is run when the robot is first started up and should be used
    * for any
@@ -68,18 +86,34 @@ public class Robot extends TimedRobot {
     m_chooser.addOption("My Auto", kCustomAuto);
     SmartDashboard.putData("Auto choserr", m_chooser);
 
-    
     frontLeftMotorConfig.inverted(true).idleMode(IdleMode.kBrake);
     rearLeftMotorConfig.inverted(true).idleMode(IdleMode.kBrake);
     frontRightMotorConfig.inverted(false).idleMode(IdleMode.kBrake);
     rearRightMotorConfig.inverted(false).idleMode(IdleMode.kBrake);
 
-    frontLeftMotor.configure(frontLeftMotorConfig,SparkBase.ResetMode.kResetSafeParameters ,SparkBase.PersistMode.kPersistParameters);
-    rearLeftMotor.configure(rearLeftMotorConfig, SparkBase.ResetMode.kResetSafeParameters ,SparkBase.PersistMode.kPersistParameters);
-    frontRightMotor.configure(frontRightMotorConfig, SparkBase.ResetMode.kResetSafeParameters ,SparkBase.PersistMode.kPersistParameters);
-    rearRightMotor.configure(rearRightMotorConfig, SparkBase.ResetMode.kResetSafeParameters ,SparkBase.PersistMode.kPersistParameters);
+    frontLeftMotor.configure(frontLeftMotorConfig, SparkBase.ResetMode.kResetSafeParameters,
+        SparkBase.PersistMode.kPersistParameters);
+    rearLeftMotor.configure(rearLeftMotorConfig, SparkBase.ResetMode.kResetSafeParameters,
+        SparkBase.PersistMode.kPersistParameters);
+    frontRightMotor.configure(frontRightMotorConfig, SparkBase.ResetMode.kResetSafeParameters,
+        SparkBase.PersistMode.kPersistParameters);
+    rearRightMotor.configure(rearRightMotorConfig, SparkBase.ResetMode.kResetSafeParameters,
+        SparkBase.PersistMode.kPersistParameters);
 
     mecanumDrive.setDeadband(0.02);
+
+    Trajectory m_trajectory = TrajectoryGenerator.generateTrajectory(
+        new Pose2d(0, 0, Rotation2d.fromDegrees(0)),
+        List.of(new Translation2d(1, 1), new Translation2d(2, -1)),
+        new Pose2d(3, 0, Rotation2d.fromDegrees(0)),
+        new TrajectoryConfig(Units.feetToMeters(3.0), Units.feetToMeters(3.0)));
+
+        SmartDashboard.putData(m_field);
+
+        m_field.getObject("traj").setTrajectory(m_trajectory);
+
+
+
 
   }
 
@@ -124,7 +158,6 @@ public class Robot extends TimedRobot {
     cronos.reset();
     navx.reset();
 
-    
   }
 
   /** This function is called periodically during autonomous. */
@@ -136,15 +169,15 @@ public class Robot extends TimedRobot {
         break;
       case kDefaultAuto:
 
-         if (cronos.get() <= 3){
+        if (cronos.get() <= 3) {
 
-         mecanumDrive.driveCartesian(0.5, 0,0);
+          mecanumDrive.driveCartesian(0.5, 0, 0);
 
-         }else {
+        } else {
 
-          mecanumDrive.driveCartesian(0,0,0);
+          mecanumDrive.driveCartesian(0, 0, 0);
 
-         }
+        }
       default:
     }
     // Put default auto code here }
@@ -153,7 +186,7 @@ public class Robot extends TimedRobot {
   /** This function is called once when teleop is enabled. */
   @Override
   public void teleopInit() {
-    
+
     navx.reset();
     fod = true;
     SmartDashboard.putBoolean("FOD", fod);
@@ -168,27 +201,34 @@ public class Robot extends TimedRobot {
     double xSpeed = driverController.getLeftX(); // Counteract imperfect strafing
     double zRotation = driverController.getRightX();
 
+    double matchTime = DriverStation.getMatchTime();
+    
+
     fod = SmartDashboard.getBoolean("FOD", fod);
 
     SmartDashboard.putData("Navx Angle", navx);
     SmartDashboard.putData("Chasis", mecanumDrive);
     SmartDashboard.putData("PDP", PowerDistribution);
-    
+    SmartDashboard.putNumber("Match Time",matchTime);
+    SmartDashboard.putData("Field", m_field);
+    SmartDashboard.putBoolean("FOD", fod);
+    alert.set(fod);
+    alert2.set(DriverStation.isEStopped());
 
     if (fod) {
 
       Rotation2d navXAngle = Rotation2d.fromDegrees(navx.getAngle());
 
       // POV
-     
+
       mecanumDrive.driveCartesian(ySpeed, xSpeed, zRotation, navXAngle);
-      System.out.println("Modo FOD Activado"); // manejo con
-                                                                                                       // navx FOD
+     
+                                               // navx FOD
 
     } else {
 
       mecanumDrive.driveCartesian(ySpeed, xSpeed, zRotation);
-      System.out.println("Modo FOD Desactivado");  // manejo sin navx NO FOD
+      
     }
 
     if (driverController.getOptionsButton() == true) {
