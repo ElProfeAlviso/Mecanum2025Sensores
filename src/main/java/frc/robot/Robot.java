@@ -5,8 +5,10 @@ import edu.wpi.first.wpilibj.Timer;
 import edu.wpi.first.wpilibj.smartdashboard.Field2d;
 import edu.wpi.first.wpilibj.smartdashboard.SendableChooser;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
+import frc.robot.util.Elastic;
 import edu.wpi.first.wpilibj.PowerDistribution;
 import edu.wpi.first.wpilibj.PowerDistribution.ModuleType;
+import edu.wpi.first.wpilibj.Servo;
 
 import java.util.List;
 
@@ -17,6 +19,7 @@ import com.revrobotics.spark.SparkLowLevel.MotorType;
 import com.revrobotics.spark.config.SparkBaseConfig.IdleMode;
 import com.revrobotics.spark.config.SparkMaxConfig;
 
+import edu.wpi.first.math.filter.LinearFilter;
 import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.math.geometry.Translation2d;
@@ -29,7 +32,19 @@ import edu.wpi.first.wpilibj.drive.MecanumDrive;
 import com.studica.frc.AHRS;
 
 import edu.wpi.first.wpilibj.Alert;
+import edu.wpi.first.wpilibj.AnalogPotentiometer;
+import edu.wpi.first.wpilibj.BuiltInAccelerometer;
+import edu.wpi.first.wpilibj.DigitalInput;
 import edu.wpi.first.wpilibj.DriverStation;
+import edu.wpi.first.wpilibj.DutyCycleEncoder;
+import edu.wpi.first.wpilibj.Encoder;
+import edu.wpi.first.cameraserver.CameraServer;
+import edu.wpi.first.cscore.UsbCamera;
+import edu.wpi.first.epilogue.Logged;
+
+import edu.wpi.first.wpilibj.AddressableLED;
+import edu.wpi.first.wpilibj.AddressableLEDBuffer;
+
 
 /**
  * The methods in this class are called automatically corresponding to each
@@ -37,10 +52,19 @@ import edu.wpi.first.wpilibj.DriverStation;
  * the TimedRobot documentation. If you change the name of this class or the
  * package after creating
  * this project, you must also update the Main.java file in the project.
+ * 
  */
+
 public class Robot extends TimedRobot {
-  private static final String kDefaultAuto = "Default Auto";
-  private static final String kCustomAuto = "My Auto Code";
+
+    private AddressableLED led;
+    private AddressableLEDBuffer ledBuffer;
+
+    private int rainbowFirstPixelHue = 0;
+
+
+  private static final String kDefaultAuto = "Defaul Auto";
+  private static final String kCustomAuto = "Line Auto";
 
   private String m_autoSelected;
   private final SendableChooser<String> m_chooser = new SendableChooser<>();
@@ -74,6 +98,21 @@ public class Robot extends TimedRobot {
   Alert alert = new Alert("Modo FOD ACTIVADO", Alert.AlertType.kInfo);  
   Alert alert2 = new Alert("PARO DE EMERGENCIA ACTIVADO", Alert.AlertType.kError);
 
+  private Servo intakeServo = new Servo(0); // Servo para el mecanismo de intake.
+
+  DigitalInput magneticSensor = new DigitalInput(4); // Sensor magnético en el eje X del robot.
+  DigitalInput limitSwitch = new DigitalInput(6); // Sensor de limite
+  BuiltInAccelerometer accelerometer = new BuiltInAccelerometer();
+
+  Elastic.Notification notification = new Elastic.Notification(Elastic.NotificationLevel.INFO, "Teleoperado iniciado", "El modo teleoperado inicio correctamente");
+
+
+  AnalogPotentiometer Ultrasonic = new AnalogPotentiometer(0, 5000, 300);
+
+   Encoder encoder4x = new Encoder(0, 1, true, Encoder.EncodingType.k4X);
+
+   DutyCycleEncoder absoluteEncoder = new DutyCycleEncoder(2, 360, 0);
+
 
   /**
    * This function is run when the robot is first started up and should be used
@@ -81,6 +120,27 @@ public class Robot extends TimedRobot {
    * initialization code.
    */
   public void robotInit() {
+
+        led = new AddressableLED(6);
+
+        // Crea buffer de 6 LEDs
+        ledBuffer = new AddressableLEDBuffer(5);
+        led.setLength(ledBuffer.getLength());
+
+        // Asigna buffer al objeto LED
+        led.setData(ledBuffer);
+
+        // Activa la señal
+        led.start();
+
+        for (int i = 0; i < ledBuffer.getLength(); i++) {
+          ledBuffer.setRGB(i, 0, 0, 0); // R, G, B
+      }
+      led.setData(ledBuffer);
+
+        
+
+    enableLiveWindowInTest(true);
 
     m_chooser.setDefaultOption("Default Auto", kDefaultAuto);
     m_chooser.addOption("My Auto", kCustomAuto);
@@ -101,6 +161,8 @@ public class Robot extends TimedRobot {
         SparkBase.PersistMode.kPersistParameters);
 
     mecanumDrive.setDeadband(0.02);
+    mecanumDrive.setMaxOutput(1.0);
+    boolean safetyDrive = mecanumDrive.isSafetyEnabled();
 
     Trajectory m_trajectory = TrajectoryGenerator.generateTrajectory(
         new Pose2d(0, 0, Rotation2d.fromDegrees(0)),
@@ -111,6 +173,15 @@ public class Robot extends TimedRobot {
         SmartDashboard.putData(m_field);
 
         m_field.getObject("traj").setTrajectory(m_trajectory);
+
+        intakeServo.setAngle(90); // Posición inicial del servo.
+
+        // Inicia la captura automática de la primera cámara USB encontrada
+    UsbCamera camera = CameraServer.startAutomaticCapture();
+
+    // Configurar resolución y FPS (opcional, ajusta según rendimiento)
+    camera.setResolution(320, 240);
+    camera.setFPS(15);
 
 
 
@@ -164,10 +235,10 @@ public class Robot extends TimedRobot {
   @Override
   public void autonomousPeriodic() {
     switch (m_autoSelected) {
-      case kCustomAuto:
+      case kDefaultAuto:
         // Put custom auto code here
         break;
-      case kDefaultAuto:
+      case kCustomAuto:
 
         if (cronos.get() <= 3) {
 
@@ -190,6 +261,16 @@ public class Robot extends TimedRobot {
     navx.reset();
     fod = true;
     SmartDashboard.putBoolean("FOD", fod);
+    SmartDashboard.putNumber("Servo Angle", 90);
+    SmartDashboard.putData("Chasis", mecanumDrive);
+    SmartDashboard.putData("PDP", PowerDistribution);
+
+    Elastic.sendNotification(notification);
+
+    encoder4x.setSamplesToAverage(5);
+    encoder4x.setDistancePerPulse(1.0/360*Math.PI*6);
+    encoder4x.setMinRate(1);
+    encoder4x.reset();
 
   }
 
@@ -207,13 +288,46 @@ public class Robot extends TimedRobot {
     fod = SmartDashboard.getBoolean("FOD", fod);
 
     SmartDashboard.putData("Navx Angle", navx);
-    SmartDashboard.putData("Chasis", mecanumDrive);
-    SmartDashboard.putData("PDP", PowerDistribution);
+
+    LinearFilter xAccFilter = LinearFilter.movingAverage(10);
+    SmartDashboard.putNumber("Accelerometro",xAccFilter.calculate(navx.getWorldLinearAccelX()));
+    
+    
     SmartDashboard.putNumber("Match Time",matchTime);
     SmartDashboard.putData("Field", m_field);
     SmartDashboard.putBoolean("FOD", fod);
+    alert.setText("Modo Fiel Oriented Drive ACTIVADO");
     alert.set(fod);
     alert2.set(DriverStation.isEStopped());
+
+    
+
+    SmartDashboard.putBoolean("Magnetic Sensor", magneticSensor.get());
+    SmartDashboard.putNumber("Ultrasonico",Ultrasonic.get());
+
+    SmartDashboard.putData("Rio Acelerometro",accelerometer);
+
+    double servoIncrement = SmartDashboard.getNumber("Servo Angle", 90);
+
+    intakeServo.setAngle(servoIncrement); 
+
+    SmartDashboard.putNumber("Encoder en Distancia", Math.round(encoder4x.getDistance() * 100) / 100d);
+    SmartDashboard.putData("Encoder Relativo", encoder4x);
+
+    
+    SmartDashboard.putData("Encoder Absoluto", absoluteEncoder);
+    SmartDashboard.putBoolean("Limit switch", limitSwitch.get());
+
+    for (int i = 0; i < ledBuffer.getLength(); i++) {
+      final int hue = (rainbowFirstPixelHue + (i * 180 / ledBuffer.getLength())) % 180;
+      ledBuffer.setHSV(i, hue, 255, 128);
+  }
+  rainbowFirstPixelHue += 3;
+  rainbowFirstPixelHue %= 180;
+
+  // Actualizar LEDs en cada ciclo
+  led.setData(ledBuffer);
+
 
     if (fod) {
 
@@ -240,6 +354,10 @@ public class Robot extends TimedRobot {
   /** This function is called once when the robot is disabled. */
   @Override
   public void disabledInit() {
+    for (int i = 0; i < ledBuffer.getLength(); i++) {
+      ledBuffer.setRGB(i, 0, 0, 0); // negro (apagado)
+  }
+  led.setData(ledBuffer);
   }
 
   /** This function is called periodically when disabled. */
