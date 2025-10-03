@@ -34,13 +34,14 @@ import com.studica.frc.AHRS;
 import edu.wpi.first.wpilibj.Alert;
 import edu.wpi.first.wpilibj.AnalogPotentiometer;
 import edu.wpi.first.wpilibj.BuiltInAccelerometer;
+import edu.wpi.first.wpilibj.Counter;
 import edu.wpi.first.wpilibj.DigitalInput;
 import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.DutyCycleEncoder;
 import edu.wpi.first.wpilibj.Encoder;
 import edu.wpi.first.cameraserver.CameraServer;
 import edu.wpi.first.cscore.UsbCamera;
-import edu.wpi.first.epilogue.Logged;
+
 
 import edu.wpi.first.wpilibj.AddressableLED;
 import edu.wpi.first.wpilibj.AddressableLEDBuffer;
@@ -48,6 +49,12 @@ import edu.wpi.first.wpilibj.AddressableLEDBuffer;
 import edu.wpi.first.wpilibj.I2C;
 import edu.wpi.first.wpilibj.util.Color;
 import com.revrobotics.ColorSensorV3;
+
+
+import com.ctre.phoenix6.CANBus;
+import com.ctre.phoenix6.configs.CANrangeConfiguration;
+import com.ctre.phoenix6.hardware.CANrange;
+import com.ctre.phoenix6.signals.UpdateModeValue;
 
 
 /**
@@ -60,6 +67,15 @@ import com.revrobotics.ColorSensorV3;
  */
 
 public class Robot extends TimedRobot {
+
+  
+  private final CANBus kCANBus = new CANBus("rio");
+  private final CANrange canRange = new CANrange(10, kCANBus);
+  
+
+
+
+  Counter counter = new Counter(Counter.Mode.kTwoPulse);
 
   private final I2C.Port i2cPort = I2C.Port.kOnboard;
 
@@ -129,6 +145,25 @@ public class Robot extends TimedRobot {
    * initialization code.
    */
   public void robotInit() {
+     /* Configure CANrange */
+     CANrangeConfiguration config = new CANrangeConfiguration();
+
+     config.ProximityParams.MinSignalStrengthForValidMeasurement = 2000; // If CANrange has a signal strength of at least 2000, it is a valid measurement.
+     config.ProximityParams.ProximityThreshold = 0.2; // If CANrange detects an object within 0.1 meters, it will trigger the "isDetected" signal.
+ 
+     config.ToFParams.UpdateMode = UpdateModeValue.ShortRange100Hz; // Make the CANrange update as fast as possible at 100 Hz. This requires short-range mode.
+ 
+     canRange.getConfigurator().apply(config);
+
+
+
+    counter.reset();
+
+    counter.setUpSource(9);
+    counter.clearDownSource();
+    counter.setUpSourceEdge(true, false);
+
+    
 
         led = new AddressableLED(6);
 
@@ -171,7 +206,7 @@ public class Robot extends TimedRobot {
 
     mecanumDrive.setDeadband(0.02);
     mecanumDrive.setMaxOutput(1.0);
-    boolean safetyDrive = mecanumDrive.isSafetyEnabled();
+   
 
     Trajectory m_trajectory = TrajectoryGenerator.generateTrajectory(
         new Pose2d(0, 0, Rotation2d.fromDegrees(0)),
@@ -210,6 +245,11 @@ public class Robot extends TimedRobot {
   @Override
   public void robotPeriodic() {
 
+    if (limitSwitch.get() == false) {
+      counter.reset();
+    }
+
+
     Color detectedColor = m_colorSensor.getColor();
     double IR = m_colorSensor.getIR();
 
@@ -222,11 +262,22 @@ public class Robot extends TimedRobot {
 
     SmartDashboard.putNumber("Proximity", proximity);
     SmartDashboard.putString("Color Sensor", m_colorSensor.getColor().toHexString());
+
+
+    
+      /* 
+      var distance = canRange.getDistance();
+      var signalStrength = canRange.getSignalStrength();
+      var isDetected = canRange.getIsDetected(false);*/ 
+     
+      SmartDashboard.putData("CANrange", canRange);
+      
+    }
    
 
 
 
-  }
+  
 
   /**
    * This autonomous (along with the chooser code above) shows how to select
@@ -355,6 +406,8 @@ public class Robot extends TimedRobot {
 
   // Actualizar LEDs en cada ciclo
   led.setData(ledBuffer);
+
+  SmartDashboard.putNumber("Counter", counter.get());
 
 
     if (fod) {
