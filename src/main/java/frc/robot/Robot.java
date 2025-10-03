@@ -278,6 +278,8 @@ public class Robot extends TimedRobot {
   @Override
   public void teleopPeriodic() {
 
+    SmartDashboard.putNumber("Temperatura PDP", PowerDistribution.getTemperature());
+
     double ySpeed = -driverController.getLeftY(); // Remember, this is reversed!
     double xSpeed = driverController.getLeftX(); // Counteract imperfect strafing
     double zRotation = driverController.getRightX();
@@ -355,7 +357,7 @@ public class Robot extends TimedRobot {
   @Override
   public void disabledInit() {
     for (int i = 0; i < ledBuffer.getLength(); i++) {
-      ledBuffer.setRGB(i, 0, 0, 0); // negro (apagado)
+      ledBuffer.setRGB(i, 0, 255, 0); // negro (apagado)
   }
   led.setData(ledBuffer);
   }
