@@ -187,7 +187,7 @@ public class Robot extends TimedRobot {
     enableLiveWindowInTest(true);
 
     m_chooser.setDefaultOption("Default Auto", kDefaultAuto);
-    m_chooser.addOption("My Auto", kCustomAuto);
+    m_chooser.addOption("Line 3S Auto", kCustomAuto);
     SmartDashboard.putData("Auto choserr", m_chooser);
 
     frontLeftMotorConfig.inverted(true).idleMode(IdleMode.kBrake);
