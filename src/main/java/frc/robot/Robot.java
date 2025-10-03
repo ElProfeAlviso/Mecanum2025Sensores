@@ -409,6 +409,10 @@ public class Robot extends TimedRobot {
 
   SmartDashboard.putNumber("Counter", counter.get());
 
+  SmartDashboard.putData("Controller", driverController);
+
+  
+
 
     if (fod) {
 
