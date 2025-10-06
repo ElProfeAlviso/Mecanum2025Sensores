@@ -127,6 +127,7 @@ public class Robot extends TimedRobot {
 
   DigitalInput magneticSensor = new DigitalInput(4); // Sensor magnético en el eje X del robot.
   DigitalInput limitSwitch = new DigitalInput(6); // Sensor de limite
+  DigitalInput InductiveSensor = new DigitalInput(7); // Sensor de limite
   BuiltInAccelerometer accelerometer = new BuiltInAccelerometer();
 
   Elastic.Notification notification = new Elastic.Notification(Elastic.NotificationLevel.INFO, "Teleoperado iniciado", "El modo teleoperado inicio correctamente");
@@ -367,6 +368,7 @@ public class Robot extends TimedRobot {
     fod = SmartDashboard.getBoolean("FOD", fod);
 
     SmartDashboard.putData("Navx Angle", navx);
+    SmartDashboard.putNumber("Navx Yaw", navx.getYaw());
 
     LinearFilter xAccFilter = LinearFilter.movingAverage(10);
     SmartDashboard.putNumber("Accelerometro",xAccFilter.calculate(navx.getWorldLinearAccelX()));
@@ -396,6 +398,7 @@ public class Robot extends TimedRobot {
     
     SmartDashboard.putData("Encoder Absoluto", absoluteEncoder);
     SmartDashboard.putBoolean("Limit switch", limitSwitch.get());
+    SmartDashboard.putBoolean("Sensor Inductivo", InductiveSensor.get());
 
     for (int i = 0; i < ledBuffer.getLength(); i++) {
       final int hue = (rainbowFirstPixelHue + (i * 180 / ledBuffer.getLength())) % 180;
@@ -410,6 +413,8 @@ public class Robot extends TimedRobot {
   SmartDashboard.putNumber("Counter", counter.get());
 
   SmartDashboard.putData("Controller", driverController);
+
+ 
 
   
 
