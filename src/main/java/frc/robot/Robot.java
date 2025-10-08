@@ -24,9 +24,14 @@ import edu.wpi.first.wpilibj.PowerDistribution.ModuleType;
 import edu.wpi.first.wpilibj.Servo;
 import com.revrobotics.spark.SparkBase;
 import com.revrobotics.spark.SparkMax;
+import com.revrobotics.spark.SparkBase.ControlType;
 import com.revrobotics.spark.SparkLowLevel.MotorType;
 import com.revrobotics.spark.config.SparkBaseConfig.IdleMode;
+import com.revrobotics.spark.config.SoftLimitConfig;
 import com.revrobotics.spark.config.SparkMaxConfig;
+import com.revrobotics.spark.config.ClosedLoopConfig.FeedbackSensor;
+import com.revrobotics.spark.SparkClosedLoopController;
+
 
 //Utilidades de matematicas
 import edu.wpi.first.math.geometry.Pose2d;
@@ -112,6 +117,20 @@ public class Robot extends TimedRobot {
 
   Timer cronos = new Timer(); // Nuevo timer para cronometrar tiempo de autonomo.;
 
+
+  //Creacion de objeto de Shooter
+  private final SparkMax shooterMotor = new SparkMax(11, MotorType.kBrushless);
+  private final SparkMaxConfig shooterMotorConfig = new SparkMaxConfig();
+  private final SparkClosedLoopController shooterPid = shooterMotor.getClosedLoopController();
+
+  //Creacion de objeto de Climber
+  
+  private final SparkMax climberMotor = new SparkMax(12, MotorType.kBrushless);
+  private final SparkMaxConfig climberMotorConfig = new SparkMaxConfig();
+  private final SoftLimitConfig climberSoftLimitsConfig = new SoftLimitConfig();
+  private final SparkClosedLoopController climberPid = climberMotor.getClosedLoopController();
+  
+
   // Creacion de objeto Motores y Drive Mecanum
   private final SparkMax frontLeftMotor = new SparkMax(5, MotorType.kBrushed);
   private final SparkMax rearLeftMotor = new SparkMax(3, MotorType.kBrushed);
@@ -167,6 +186,13 @@ public class Robot extends TimedRobot {
 
   // Variables globales
   private boolean fod; // Habilitar o deshabilitar el control Field Oriented Drive.
+  private double climberSetPoint; // Variable para almacenar el setpoint del climber.
+  // Variable para habilitar o deshabilitar el control PID del climber
+  boolean ClimberEnablePID = false;
+
+  private double shooterSetPoint = 0;
+
+
 
   // Metodo de inicializacion del robot.
   public void robotInit() {
@@ -204,6 +230,35 @@ public class Robot extends TimedRobot {
     m_chooser.setDefaultOption("Default Auto", kDefaultAuto);
     m_chooser.addOption("Line 3S Auto", kCustomAuto);
     SmartDashboard.putData("Auto choserr", m_chooser);
+
+    // Configuracion de motor de Shooter
+    shooterMotorConfig.idleMode(IdleMode.kCoast);
+    shooterMotorConfig.inverted(true);
+    shooterMotorConfig.closedLoop.feedbackSensor(FeedbackSensor.kPrimaryEncoder);
+    shooterMotorConfig.closedLoop.pidf(0,0,0,0.002);
+    shooterMotorConfig.closedLoop.outputRange(-1, 1);
+    shooterSetPoint = 0;
+
+    shooterMotor.configure(shooterMotorConfig, SparkBase.ResetMode.kResetSafeParameters, SparkBase.PersistMode.kPersistParameters);
+
+    // Configuracion de motor de Climber
+    climberMotorConfig.idleMode(IdleMode.kBrake);
+    climberMotorConfig.inverted(true);
+    climberMotorConfig.closedLoop.feedbackSensor(FeedbackSensor.kPrimaryEncoder);
+    climberMotorConfig.closedLoop.pid(0.1,0,0.001);
+    climberMotorConfig.closedLoop.outputRange(-1, 1);
+    climberSetPoint = 0;
+
+    climberSoftLimitsConfig.forwardSoftLimitEnabled(true);
+    climberSoftLimitsConfig.forwardSoftLimit(50);
+    climberSoftLimitsConfig.reverseSoftLimitEnabled(true);
+    climberSoftLimitsConfig.reverseSoftLimit(0);
+
+    climberMotorConfig.apply(climberSoftLimitsConfig);
+    climberMotor.configure(climberMotorConfig, SparkBase.ResetMode.kResetSafeParameters, SparkBase.PersistMode.kPersistParameters);
+
+    climberMotor.getEncoder().setPosition(0);
+
 
     // Configuracion de Motores y Drive Mecanum
     frontLeftMotorConfig.inverted(true).idleMode(IdleMode.kBrake);
@@ -291,6 +346,7 @@ public class Robot extends TimedRobot {
     counter.reset();
 
     tejuino_board.all_leds_blue(0);
+    tejuino_board.all_leds_blue(1);
 
   }
 
@@ -330,11 +386,13 @@ public class Robot extends TimedRobot {
     SmartDashboard.putNumber("Servo Angle", 90);
     SmartDashboard.putData("Chasis", mecanumDrive);
     SmartDashboard.putData("PDP", PowerDistribution);
+   
 
     Elastic.sendNotification(notification);
 
     //Control Leds Tejuino
     tejuino_board.all_leds_green(0);
+    tejuino_board.all_leds_green(1);
 
   }
 
@@ -390,6 +448,21 @@ public class Robot extends TimedRobot {
     SmartDashboard.putBoolean("Sensor Inductivo", InductiveSensor.get());
     SmartDashboard.putNumber("Temperatura PDP", PowerDistribution.getTemperature());
     SmartDashboard.putData("CANrange", canRange);
+    SmartDashboard.putNumber("Climber Position Encoder", climberMotor.getEncoder().getPosition());
+
+    //PID Climber Smartdashboard
+    SmartDashboard.putNumber("Climber Set Point", climberSetPoint);
+    SmartDashboard.putNumber("Climber Encoder", climberMotor.getEncoder().getPosition());
+    SmartDashboard.putNumber("Climber Output", climberMotor.getAppliedOutput());
+
+    SmartDashboard.putNumber("Shooter Set Point", shooterSetPoint);
+    SmartDashboard.putNumber("Shooter Velocity", shooterMotor.getEncoder().getVelocity());
+    SmartDashboard.putNumber("Shooter Output", shooterMotor.getAppliedOutput());
+    
+
+   
+    
+    
 
     /* CONTROL DE CHASIS MECANUM DRIVE CON FOD */
 
@@ -419,6 +492,56 @@ public class Robot extends TimedRobot {
       counter.reset();
     }
 
+    //Control de shooter
+
+  // Control del shooter con botones PS4
+  if (driverController.getR2Button()) {
+    shooterSetPoint= 0; // Arranca el shooter hacia adelante
+  } else if (driverController.getL2Button()) {
+    shooterSetPoint = 100; // Arranca el shooter hacia atrás
+  } 
+
+  shooterPid.setReference(shooterSetPoint, ControlType.kVelocity); // Control PID
+
+  
+
+
+
+
+  if (driverController.getL1Button() || driverController.getR1Button()) {
+    ClimberEnablePID = false; // Deshabilita PID si se usan los botones L1 o R1
+  }
+
+  if (driverController.getCrossButton() || driverController.getCircleButton() || driverController.getTriangleButton()) {
+    ClimberEnablePID = true; // Habilita PID si se usan los botones de posicion
+  }
+
+
+  
+  //Control de climber con botones PS4 L1 y R1
+  if (!ClimberEnablePID) {
+    if (driverController.getL1Button()) {
+      climberMotor.set(0.5); // Sube el climber
+    } else if (driverController.getR1Button()) {
+      climberMotor.set(-0.5); // Baja el climber
+    } else {
+      climberMotor.set(0); // Detiene el climber
+    }
+  }
+
+  // Control del climber con PID usando botones PS4
+  if (ClimberEnablePID) {
+    if (driverController.getCrossButton()) {
+      climberSetPoint = 0; // Posición 0
+    } else if (driverController.getCircleButton()) {
+      climberSetPoint = 25; // Posición 25
+    } else if (driverController.getTriangleButton()) {
+      climberSetPoint = 50; // Posición 50
+    }
+
+    climberPid.setReference(climberSetPoint, ControlType.kPosition); // Control PID
+  }
+
   }
 
   /** This function is called once when the robot is disabled. */
@@ -432,8 +555,16 @@ public class Robot extends TimedRobot {
     led.setData(ledBuffer);
 
     tejuino_board.rainbow_effect(0);
+    tejuino_board.rainbow_effect(1);
 
   }
+
+
+
+  
+
+
+
 
   /** This function is called periodically when disabled. */
   @Override
