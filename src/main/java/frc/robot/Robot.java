@@ -78,6 +78,9 @@ import edu.wpi.first.cscore.UsbCamera;
 import edu.wpi.first.wpilibj.AddressableLED;
 import edu.wpi.first.wpilibj.AddressableLEDBuffer;
 
+//Tejuino Board
+import frc.robot.TejuinoBoard;
+
 //Clase principal de Robot heredando framework TimedRobot
 
 public class Robot extends TimedRobot {
@@ -97,6 +100,9 @@ public class Robot extends TimedRobot {
   private AddressableLED led;
   private AddressableLEDBuffer ledBuffer;
   private int rainbowFirstPixelHue = 0;
+
+  //Creacion de objeto Tejuino Board
+  private final TejuinoBoard tejuino_board = new TejuinoBoard();
 
   // Creacion de objeto Menu selector de Autonomo
   private static final String kDefaultAuto = "Defaul Auto";
@@ -184,6 +190,9 @@ public class Robot extends TimedRobot {
     led.setLength(ledBuffer.getLength());
     led.setData(ledBuffer);// Asigna buffer al objeto LED
     led.start();// Activa la señal
+
+    //Configuracion Tejuino Board
+    tejuino_board.init(0);
 
     // Apagar todos al inicio
     for (int i = 0; i < ledBuffer.getLength(); i++) {
@@ -281,11 +290,15 @@ public class Robot extends TimedRobot {
     navx.reset();
     counter.reset();
 
+    tejuino_board.all_leds_blue(0);
+
   }
 
   /** This function is called periodically during autonomous. */
   @Override
   public void autonomousPeriodic() {
+    
+
     switch (m_autoSelected) {
       case kDefaultAuto:
         // Put custom auto code here
@@ -320,6 +333,9 @@ public class Robot extends TimedRobot {
 
     Elastic.sendNotification(notification);
 
+    //Control Leds Tejuino
+    tejuino_board.all_leds_green(0);
+
   }
 
   /** This function is called periodically during operator control. */
@@ -349,6 +365,8 @@ public class Robot extends TimedRobot {
     rainbowFirstPixelHue %= 180;
 
     led.setData(ledBuffer);
+
+    
 
     // Filtro para suavizar lectura del acelerometro
     LinearFilter xAccFilter = LinearFilter.movingAverage(10);
@@ -413,11 +431,15 @@ public class Robot extends TimedRobot {
     }
     led.setData(ledBuffer);
 
+    tejuino_board.rainbow_effect(0);
+
   }
 
   /** This function is called periodically when disabled. */
   @Override
   public void disabledPeriodic() {
+
+    
   }
 
   /** This function is called once when test mode is enabled. */
