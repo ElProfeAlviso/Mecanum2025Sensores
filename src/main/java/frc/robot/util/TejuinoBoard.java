@@ -57,7 +57,7 @@
  ===============================================
  */
 //Compiled for WPILib 2024.2.1
-package frc.robot;
+package frc.robot.util;
 import edu.wpi.first.hal.CANAPIJNI;
 
 public class TejuinoBoard {
@@ -79,7 +79,7 @@ public class TejuinoBoard {
   private static final int TEJUINO_DEVICE_TYPE = 10;
 
   private static final int TEJUINO_LED_API_ID = 0;
-  private static final int TEJUINO_GPIO_API_ID = 1; //Reserved for V2
+  //private static final int TEJUINO_GPIO_API_ID = 1; //Reserved for V2
 
  
   private int can_handle = 0;

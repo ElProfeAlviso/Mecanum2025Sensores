@@ -1,7 +1,7 @@
-//Folder de Proyecto
+//Folder principal del Proyecto
 package frc.robot;
 
-//Framework de Robot FRC
+//Framework de Robot Timed FRC
 import edu.wpi.first.wpilibj.TimedRobot;
 
 //Utilidades generales
@@ -13,8 +13,9 @@ import edu.wpi.first.wpilibj.smartdashboard.Field2d;
 import edu.wpi.first.wpilibj.smartdashboard.SendableChooser;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 
-//Notificaciones Elastic
+//Librerias externas
 import frc.robot.util.Elastic;
+import frc.robot.util.TejuinoBoard;
 
 //Energia y PDP
 import edu.wpi.first.wpilibj.PowerDistribution;
@@ -83,9 +84,6 @@ import edu.wpi.first.cscore.UsbCamera;
 import edu.wpi.first.wpilibj.AddressableLED;
 import edu.wpi.first.wpilibj.AddressableLEDBuffer;
 
-//Tejuino Board
-import frc.robot.TejuinoBoard;
-
 //Clase principal de Robot heredando framework TimedRobot
 
 public class Robot extends TimedRobot {
@@ -94,7 +92,7 @@ public class Robot extends TimedRobot {
   private final CANBus kCANBus = new CANBus("rio");
   private final CANrange canRange = new CANrange(10, kCANBus);
 
-  // Creacion de objeto de entrada digigtal como Counter
+  // Creacion de objeto de entrada digital como Counter
   private final Counter counter = new Counter(Counter.Mode.kTwoPulse);
 
   // Creacion de objeto de sensor de Color Rev
@@ -110,13 +108,13 @@ public class Robot extends TimedRobot {
   private final TejuinoBoard tejuino_board = new TejuinoBoard();
 
   // Creacion de objeto Menu selector de Autonomo
-  private static final String kDefaultAuto = "Defaul Auto";
+  private static final String kDefaultAuto = "Default Auto";
   private static final String kCustomAuto = "Line Auto";
   private String m_autoSelected;
   private final SendableChooser<String> m_chooser = new SendableChooser<>();
 
-  Timer cronos = new Timer(); // Nuevo timer para cronometrar tiempo de autonomo.;
-
+  // Creacion de objeto Timer para retardo de autonomo
+  Timer cronos = new Timer(); 
 
   //Creacion de objeto de Shooter
   private final SparkMax shooterMotor = new SparkMax(11, MotorType.kBrushless);
@@ -124,14 +122,12 @@ public class Robot extends TimedRobot {
   private final SparkClosedLoopController shooterPid = shooterMotor.getClosedLoopController();
 
   //Creacion de objeto de Climber
-  
   private final SparkMax climberMotor = new SparkMax(12, MotorType.kBrushless);
   private final SparkMaxConfig climberMotorConfig = new SparkMaxConfig();
   private final SoftLimitConfig climberSoftLimitsConfig = new SoftLimitConfig();
   private final SparkClosedLoopController climberPid = climberMotor.getClosedLoopController();
-  
 
-  // Creacion de objeto Motores y Drive Mecanum
+  // Creacion de objetos Motores de Drive Mecanum
   private final SparkMax frontLeftMotor = new SparkMax(5, MotorType.kBrushed);
   private final SparkMax rearLeftMotor = new SparkMax(3, MotorType.kBrushed);
   private final SparkMax frontRightMotor = new SparkMax(4, MotorType.kBrushed);
@@ -187,10 +183,10 @@ public class Robot extends TimedRobot {
   // Variables globales
   private boolean fod; // Habilitar o deshabilitar el control Field Oriented Drive.
   private double climberSetPoint; // Variable para almacenar el setpoint del climber.
-  // Variable para habilitar o deshabilitar el control PID del climber
-  boolean ClimberEnablePID = false;
-
-  private double shooterSetPoint = 0;
+  boolean ClimberEnablePID = false; // Variable para habilitar o deshabilitar el control PID del climber
+  private double shooterSetPoint = 0;//Variable para almacenar el setpoint del shooter
+  private final double shooterVelocityFF = (1 / 473); // Valor FF es el inverso Kv del motor 473 RPM a 12V
+  
 
 
 
@@ -205,8 +201,8 @@ public class Robot extends TimedRobot {
     canRange.getConfigurator().apply(config);
 
     // Configuracion de Counter
-    counter.reset();
     counter.setUpSource(9);
+    counter.reset();
     counter.clearDownSource();
     counter.setUpSourceEdge(true, false);
 
@@ -234,8 +230,9 @@ public class Robot extends TimedRobot {
     // Configuracion de motor de Shooter
     shooterMotorConfig.idleMode(IdleMode.kCoast);
     shooterMotorConfig.inverted(true);
+    shooterMotorConfig.smartCurrentLimit(40);
     shooterMotorConfig.closedLoop.feedbackSensor(FeedbackSensor.kPrimaryEncoder);
-    shooterMotorConfig.closedLoop.pidf(0,0,0,0.002);
+    shooterMotorConfig.closedLoop.pidf(0.0001,0,0,shooterVelocityFF); //Valor FF es el inverso Kv del motor 473 RPM a 12V
     shooterMotorConfig.closedLoop.outputRange(-1, 1);
     shooterSetPoint = 0;
 
@@ -244,6 +241,7 @@ public class Robot extends TimedRobot {
     // Configuracion de motor de Climber
     climberMotorConfig.idleMode(IdleMode.kBrake);
     climberMotorConfig.inverted(true);
+    climberMotorConfig.smartCurrentLimit(40);
     climberMotorConfig.closedLoop.feedbackSensor(FeedbackSensor.kPrimaryEncoder);
     climberMotorConfig.closedLoop.pid(0.1,0,0.001);
     climberMotorConfig.closedLoop.outputRange(-1, 1);
@@ -256,15 +254,14 @@ public class Robot extends TimedRobot {
 
     climberMotorConfig.apply(climberSoftLimitsConfig);
     climberMotor.configure(climberMotorConfig, SparkBase.ResetMode.kResetSafeParameters, SparkBase.PersistMode.kPersistParameters);
-
     climberMotor.getEncoder().setPosition(0);
 
 
     // Configuracion de Motores y Drive Mecanum
-    frontLeftMotorConfig.inverted(true).idleMode(IdleMode.kBrake);
-    rearLeftMotorConfig.inverted(true).idleMode(IdleMode.kBrake);
-    frontRightMotorConfig.inverted(false).idleMode(IdleMode.kBrake);
-    rearRightMotorConfig.inverted(false).idleMode(IdleMode.kBrake);
+    frontLeftMotorConfig.inverted(true).idleMode(IdleMode.kBrake).smartCurrentLimit(40);
+    rearLeftMotorConfig.inverted(true).idleMode(IdleMode.kBrake).smartCurrentLimit(40);
+    frontRightMotorConfig.inverted(false).idleMode(IdleMode.kBrake).smartCurrentLimit(40);
+    rearRightMotorConfig.inverted(false).idleMode(IdleMode.kBrake).smartCurrentLimit(40);
     frontLeftMotor.configure(frontLeftMotorConfig, SparkBase.ResetMode.kResetSafeParameters, SparkBase.PersistMode.kPersistParameters);
     rearLeftMotor.configure(rearLeftMotorConfig, SparkBase.ResetMode.kResetSafeParameters, SparkBase.PersistMode.kPersistParameters);
     frontRightMotor.configure(frontRightMotorConfig, SparkBase.ResetMode.kResetSafeParameters, SparkBase.PersistMode.kPersistParameters);
@@ -272,6 +269,7 @@ public class Robot extends TimedRobot {
 
     mecanumDrive.setDeadband(0.02);
     mecanumDrive.setMaxOutput(1.0);
+    
 
     // Configuracion de encoders
     encoder4x.setSamplesToAverage(5);
@@ -327,7 +325,6 @@ public class Robot extends TimedRobot {
 
     SmartDashboard.putNumber("Proximity", proximity);
     SmartDashboard.putString("Color Sensor", m_colorSensor.getColor().toHexString());
-
     
   }
 
@@ -354,7 +351,6 @@ public class Robot extends TimedRobot {
   @Override
   public void autonomousPeriodic() {
     
-
     switch (m_autoSelected) {
       case kDefaultAuto:
         // Put custom auto code here
@@ -455,13 +451,10 @@ public class Robot extends TimedRobot {
     SmartDashboard.putNumber("Climber Encoder", climberMotor.getEncoder().getPosition());
     SmartDashboard.putNumber("Climber Output", climberMotor.getAppliedOutput());
 
+    //PID Shooter Smartdashboard
     SmartDashboard.putNumber("Shooter Set Point", shooterSetPoint);
     SmartDashboard.putNumber("Shooter Velocity", shooterMotor.getEncoder().getVelocity());
     SmartDashboard.putNumber("Shooter Output", shooterMotor.getAppliedOutput());
-    
-
-   
-    
     
 
     /* CONTROL DE CHASIS MECANUM DRIVE CON FOD */
@@ -469,17 +462,17 @@ public class Robot extends TimedRobot {
     // Lectura y escritura de FOD desde SmartDashboard
     fod = SmartDashboard.getBoolean("FOD", fod);
     // Lectura de ejes del Joystick PS4
-    double ySpeed = -driverController.getLeftY(); // Remember, this is reversed!
-    double xSpeed = driverController.getLeftX(); // Counteract imperfect strafing
+    double xSpeed = -driverController.getLeftY(); // Remember, this is reversed!
+    double ySpeed = driverController.getLeftX(); 
     double zRotation = driverController.getRightX();
 
     if (fod) {
       Rotation2d navXAngle = Rotation2d.fromDegrees(navx.getAngle());
       // POV
-      mecanumDrive.driveCartesian(ySpeed, xSpeed, zRotation, navXAngle);
+      mecanumDrive.driveCartesian(xSpeed, ySpeed, zRotation, navXAngle);
       // navx FOD
     } else {
-      mecanumDrive.driveCartesian(ySpeed, xSpeed, zRotation);
+      mecanumDrive.driveCartesian(xSpeed, ySpeed, zRotation);
       // Sin navx
     }
 
@@ -496,20 +489,18 @@ public class Robot extends TimedRobot {
 
   // Control del shooter con botones PS4
   if (driverController.getR2Button()) {
-    shooterSetPoint= 0; // Arranca el shooter hacia adelante
+    shooterSetPoint= 0; //Detiene el Shooter
+
   } else if (driverController.getL2Button()) {
-    shooterSetPoint = 100; // Arranca el shooter hacia atrás
+    shooterSetPoint = 2000; //Arranca el shooter con PID
   } 
 
   shooterPid.setReference(shooterSetPoint, ControlType.kVelocity); // Control PID
 
-  
-
-
-
+  //Control de climber con PS4 y PID
 
   if (driverController.getL1Button() || driverController.getR1Button()) {
-    ClimberEnablePID = false; // Deshabilita PID si se usan los botones L1 o R1
+    ClimberEnablePID = false;
   }
 
   if (driverController.getCrossButton() || driverController.getCircleButton() || driverController.getTriangleButton()) {
