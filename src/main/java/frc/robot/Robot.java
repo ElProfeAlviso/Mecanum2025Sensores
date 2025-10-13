@@ -198,6 +198,7 @@ public class Robot extends TimedRobot {
   private double climberSetPoint; // Variable para almacenar el setpoint del climber.
   boolean ClimberEnablePID = false; // Variable para habilitar o deshabilitar el control PID del climber
   private double shooterSetPoint = 0;//Variable para almacenar el setpoint del shooter
+  private int dashboardCounter = 0; // Contador para controlar la frecuencia de actualizacion del dashboard
 
   
 
@@ -400,18 +401,7 @@ public class Robot extends TimedRobot {
       noAutoSelected.set(false);
     }
 
-    // Lectura de sensor de color
-    Color detectedColor = m_colorSensor.getColor();
-    double IR = m_colorSensor.getIR();
-    int proximity = m_colorSensor.getProximity();
-
-    SmartDashboard.putNumber("Red", detectedColor.red);
-    SmartDashboard.putNumber("Green", detectedColor.green);
-    SmartDashboard.putNumber("Blue", detectedColor.blue);
-    SmartDashboard.putNumber("IR", IR);
-
-    SmartDashboard.putNumber("Proximity", proximity);
-    SmartDashboard.putString("Color Sensor", m_colorSensor.getColor().toHexString());
+    
     
   }
   /** This function is called once each time the robot enters autonomous mode. */
@@ -492,6 +482,11 @@ public class Robot extends TimedRobot {
   @Override
   public void teleopPeriodic() {
 
+    // Lectura de sensor de color
+    Color detectedColor = m_colorSensor.getColor();
+    double IR = m_colorSensor.getIR();
+    int proximity = m_colorSensor.getProximity();
+
     // Lectura de tiempo de partido
     double matchTime = DriverStation.getMatchTime();
 
@@ -517,6 +512,11 @@ public class Robot extends TimedRobot {
     // Filtro para suavizar lectura del acelerometro del navx
     LinearFilter xAccFilter = LinearFilter.movingAverage(10);
 
+    // Actualizacion de dashboard cada 100ms aprox
+    dashboardCounter++;
+
+    if (dashboardCounter % 10==0) { // Actualiza el dashboard cada 10 ciclos aprox 200ms
+     
     // Escritura de datos en SmartDashboard
     SmartDashboard.putNumber("Accelerometro X Navx", xAccFilter.calculate(navx.getWorldLinearAccelX()));
     SmartDashboard.putNumber("Counter", counter.get());
@@ -539,6 +539,16 @@ public class Robot extends TimedRobot {
     SmartDashboard.putNumber("Climber Position Encoder", climberMotor.getEncoder().getPosition());
     SmartDashboard.putBoolean("ultrasonic trigger", ultrasonicTrigger.getTriggerState());
 
+    // Color Sensor SmartDashboard
+    SmartDashboard.putNumber("Red", detectedColor.red);
+    SmartDashboard.putNumber("Green", detectedColor.green);
+    SmartDashboard.putNumber("Blue", detectedColor.blue);
+    SmartDashboard.putNumber("IR", IR);
+
+    SmartDashboard.putNumber("Proximity", proximity);
+    SmartDashboard.putString("Color Sensor", m_colorSensor.getColor().toHexString());
+
+
     //PID Climber Smartdashboard
     SmartDashboard.putNumber("Climber Set Point", climberSetPoint);
     SmartDashboard.putNumber("Climber Encoder", climberMotor.getEncoder().getPosition());
@@ -548,7 +558,7 @@ public class Robot extends TimedRobot {
     SmartDashboard.putNumber("Shooter Set Point", shooterSetPoint);
     SmartDashboard.putNumber("Shooter Velocity", shooterMotor.getEncoder().getVelocity());
     SmartDashboard.putNumber("Shooter Output", shooterMotor.getAppliedOutput());
-    
+  }
 
     /* CONTROL DE CHASIS MECANUM DRIVE CON FOD */
 
