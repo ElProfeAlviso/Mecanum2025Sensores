@@ -228,6 +228,33 @@ public class Robot extends TimedRobot {
       });
     }
   };
+  // Creacion de objeto de Sendable personalizado del Climber PID Sparkmax para envio a elastic.
+  Sendable pidClimberSendable = new Sendable() {
+    @Override
+    public void initSendable(SendableBuilder climberBuilder) {
+      climberBuilder.setSmartDashboardType("Climber PIDController");
+
+      climberBuilder.addDoubleProperty("P", () -> climberMotor.configAccessor.closedLoop.getP(),
+      x -> {climberMotorConfig.closedLoop.p(x);
+            climberMotor.configure(climberMotorConfig, SparkBase.ResetMode.kResetSafeParameters, SparkBase.PersistMode.kPersistParameters);
+      });
+
+      climberBuilder.addDoubleProperty("I", () -> climberMotor.configAccessor.closedLoop.getI(),
+      x -> {climberMotorConfig.closedLoop.i(x);
+            climberMotor.configure(climberMotorConfig, SparkBase.ResetMode.kResetSafeParameters, SparkBase.PersistMode.kPersistParameters);
+      });
+
+      climberBuilder.addDoubleProperty("D", () -> climberMotor.configAccessor.closedLoop.getD(),
+      x -> {climberMotorConfig.closedLoop.d(x);
+            climberMotor.configure(climberMotorConfig, SparkBase.ResetMode.kResetSafeParameters, SparkBase.PersistMode.kPersistParameters);
+      });
+
+      climberBuilder.addDoubleProperty("FF", () -> climberMotor.configAccessor.closedLoop.getFF(),
+      x -> {climberMotorConfig.closedLoop.velocityFF(x);
+            climberMotor.configure(climberMotorConfig, SparkBase.ResetMode.kResetSafeParameters, SparkBase.PersistMode.kPersistParameters);
+      });
+    }
+  };
   
 
   // Metodo de inicializacion del robot.
@@ -278,13 +305,13 @@ public class Robot extends TimedRobot {
     SmartDashboard.putData("Auto choserr", m_chooser);
 
     // Configuracion de motor de Shooter
-    //final double shooterVelocityFF = 1 / 473; // Valor FF es el inverso Kv del motor 473 RPM a 12V
+    //final double shooterVelocityFF = 1 / 5676; // El valor FF es el inverso de la maxima velocidad en RPM del motor
 
     shooterMotorConfig.idleMode(IdleMode.kCoast);
     shooterMotorConfig.inverted(true);
     shooterMotorConfig.smartCurrentLimit(40);
     shooterMotorConfig.closedLoop.feedbackSensor(FeedbackSensor.kPrimaryEncoder);
-    shooterMotorConfig.closedLoop.pidf(0.0001,0,0,0.00211416); //Valor FF es el inverso Kv del motor 473 RPM a 12V 1/473=0.002114
+    shooterMotorConfig.closedLoop.pidf(0.000001,0,0,0.000179); //Valor FF encontrado con sintonizacion manual    
     shooterMotorConfig.closedLoop.outputRange(-1, 1);
     shooterSetPoint = 0;
 
@@ -328,7 +355,7 @@ public class Robot extends TimedRobot {
 
     // Configuracion de encoders
     encoder4x.setSamplesToAverage(10);
-    encoder4x.setDistancePerPulse(1.0 / (360*4) * (Math.PI * 6)/10); // 360 pulsos por vuelta por 4x, rueda de 6 pulgadas, reduccion 10:1 y paso a pulgadas
+    encoder4x.setDistancePerPulse(1.0 / 360 * (Math.PI * 6)); // 360 pulsos por vuelta por 4x, rueda de 6 pulgadas, reduccion 10:1 y paso a pulgadas
     encoder4x.setMinRate(10);
     encoder4x.reset();
 
@@ -448,6 +475,8 @@ public class Robot extends TimedRobot {
 
     //Envio de Controles PID de Shooter via sendable SmartDashboard
     SmartDashboard.putData("PID Shooter", pidShooterSendable); 
+    //Envio de Controles PID de Climber via sendable SmartDashboard
+    SmartDashboard.putData("PID Climber", pidClimberSendable);
           
        
     // Notificacion de inicio de teleop
@@ -558,7 +587,7 @@ public class Robot extends TimedRobot {
     shooterSetPoint= 0; //Detiene el Shooter con PID
 
   } else if (driverController.getL2Button()) {
-    shooterSetPoint = 2000; //Arranca el shooter con PID
+    shooterSetPoint = 3000; //Arranca el shooter con PID
   } 
 
   shooterPid.setReference(shooterSetPoint, ControlType.kVelocity); // Control PID
