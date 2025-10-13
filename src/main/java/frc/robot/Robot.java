@@ -175,7 +175,7 @@ public class Robot extends TimedRobot {
   AnalogPotentiometer Ultrasonic = new AnalogPotentiometer(0, 5000, 300);
 
   // Creacion de objeto Analog Trigger para usar señar boleana de deteccion del sensor ultrasonico 
-  AnalogTrigger ultrasonicTrigger = new AnalogTrigger(0);
+  AnalogTrigger ultrasonicTrigger = new AnalogTrigger(1);
 
   // Creacion de objeto Acelerometro interno del RoboRIO
   BuiltInAccelerometer accelerometer = new BuiltInAccelerometer();
@@ -199,9 +199,7 @@ public class Robot extends TimedRobot {
   boolean ClimberEnablePID = false; // Variable para habilitar o deshabilitar el control PID del climber
   private double shooterSetPoint = 0;//Variable para almacenar el setpoint del shooter
 
-  //FIXME: Ajustar valor FF del PID del shooter
-  private final double shooterVelocityFF = (1 / 473); // Valor FF es el inverso Kv del motor 473 RPM a 12V
-
+  
 
   //Creacion de objeto de Sendable personalizado  del Shooter PID Sparkmax para envio a elastic.
   Sendable pidShooterSendable = new Sendable() {
@@ -280,11 +278,13 @@ public class Robot extends TimedRobot {
     SmartDashboard.putData("Auto choserr", m_chooser);
 
     // Configuracion de motor de Shooter
+    //final double shooterVelocityFF = 1 / 473; // Valor FF es el inverso Kv del motor 473 RPM a 12V
+
     shooterMotorConfig.idleMode(IdleMode.kCoast);
     shooterMotorConfig.inverted(true);
     shooterMotorConfig.smartCurrentLimit(40);
     shooterMotorConfig.closedLoop.feedbackSensor(FeedbackSensor.kPrimaryEncoder);
-    shooterMotorConfig.closedLoop.pidf(0.0001,0,0,shooterVelocityFF); //Valor FF es el inverso Kv del motor 473 RPM a 12V
+    shooterMotorConfig.closedLoop.pidf(0.0001,0,0,0.00211416); //Valor FF es el inverso Kv del motor 473 RPM a 12V 1/473=0.002114
     shooterMotorConfig.closedLoop.outputRange(-1, 1);
     shooterSetPoint = 0;
 
@@ -366,6 +366,13 @@ public class Robot extends TimedRobot {
   @Override
   public void robotPeriodic() {
 
+   
+    if (m_chooser.getSelected() == kDefaultAuto) {
+      noAutoSelected.set(true);
+      } else {
+      noAutoSelected.set(false);
+    }
+
     // Lectura de sensor de color
     Color detectedColor = m_colorSensor.getColor();
     double IR = m_colorSensor.getIR();
@@ -389,13 +396,7 @@ public class Robot extends TimedRobot {
     System.out.println("Auto selected: " + m_autoSelected);
     Elastic.sendNotification(autoSelectedNotification);
 
-    //TODO Alerta si no se selecciono modo autonomo
-    if (m_chooser.getSelected() == null) {
-      noAutoSelected.set(true);
-      m_autoSelected = kDefaultAuto;
-    } else {
-      noAutoSelected.set(false);
-    }
+    
 
     // Reset de Timer y Navx
     cronos.start();
