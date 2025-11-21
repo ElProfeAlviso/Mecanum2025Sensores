@@ -1,3 +1,15 @@
+/**
+ * Este es un codigo de ejemplo de como programar los distintos sensores y motores (NEOS y Brushed) de un robot FRC
+ * utilizando la libreria RevSpark y CTRE CANrange junto con el framework WPILib FRC y visualizarlos en Elastic.
+ * @author El Profe Alviso (Titanium Rams 5959)
+ * @version 1.0.0
+ * @date Noviembre 2025
+ * @since Java 17
+ */
+
+
+
+
 //Folder principal del Proyecto del robot
 package frc.robot;
 
